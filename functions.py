@@ -7,3 +7,4 @@ class Functions:
     GetCommRealData = "GetCommRealData(QString, QString, QString)"
     SetRealReg = "SetRealReg(QString, QString, QString, QString)"
     GetCommDataEx = "GetCommDataEx(QString, QString)"
+    SendOrder = "SendOrder(QString, QString, QString, int, QString, int, int, QString, QString)"
