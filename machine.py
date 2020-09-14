@@ -2,9 +2,9 @@ from PyQt5.QAxContainer import *  # QAxWidget
 from PyQt5.QtCore import *  # QEventLoop
 from functions import Functions
 from bid import Bid
+from lupin import Lupin
 import numpy as np
 import pandas as pd
-from lupin import Lupin
 
 
 class Machine(QAxWidget):
@@ -167,7 +167,7 @@ class Machine(QAxWidget):
             price = self.dynamicCall(self.func.GetCommRealData, sCode, "10")  # 현재가
             qty = self.dynamicCall(self.func.GetCommRealData, sCode, "15")  # 거래량
 
-            # 상승거래량, 하락거래량
+            # 상승거래량, 하락거래량 산출을 위함
             bottom = self.dynamicCall(self.func.GetCommRealData, sCode, "27")  # (최우선)매도호가
             top = self.dynamicCall(self.func.GetCommRealData, sCode, "28")  # (최우선)매수호가
 
@@ -181,10 +181,8 @@ class Machine(QAxWidget):
         elif sRealType == '주식호가잔량':
             # data = {'time': time, 'price': price, 'qty': qty, 'view': view, 'power': power, 'fact': fact}
 
-            total_sell = self.dynamicCall(self.func.GetCommRealData, sCode, "121")  # 매도호가총잔량
-            sell_gap = self.dynamicCall(self.func.GetCommRealData, sCode, "122")  # 매도호가총잔량직전대비
-            total_buy = self.dynamicCall(self.func.GetCommRealData, sCode, "125")  # 매수호가총잔량
-            buy_gap = self.dynamicCall(self.func.GetCommRealData, sCode, "126")  # 매수호가총잔량직전대비
+            total_hope_sell = self.dynamicCall(self.func.GetCommRealData, sCode, "121")  # 매도호가총잔량
+            total_hope_buy = self.dynamicCall(self.func.GetCommRealData, sCode, "125")  # 매수호가총잔량
 
             fact = "hope"  # real 체결, hope 호가
             time = self.dynamicCall(self.func.GetCommRealData, sCode, "21")  # 호가시간
@@ -212,6 +210,7 @@ class Machine(QAxWidget):
                         view = 'neg'
                     elif qty < 0:  # 매수호가잔량 감소
                         view = 'pos'
+
 
         data = {'time': time, 'price': price, 'qty': qty, 'view': view, 'power': power, 'fact': fact}
         self.lupin.update(sCode, data)
