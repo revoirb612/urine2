@@ -2,6 +2,7 @@ from PyQt5.QAxContainer import *  # QAxWidget
 from PyQt5.QtCore import *  # QEventLoop
 from functions import Functions
 from bid import Bid
+from fid import Fid
 from lupin import Lupin
 import numpy as np
 import pandas as pd
@@ -13,6 +14,7 @@ class Machine(QAxWidget):
         self.setControl("KHOPENAPI.KHOpenAPICtrl.1")
         self.func = Functions()
         self.order = Bid()
+        self.fid = Fid()
         self.lupin = dict()
 
         self.login_loop = QEventLoop()
@@ -160,54 +162,17 @@ class Machine(QAxWidget):
             return 0
 
         elif sRealType == '주식체결':
-            # data = {'time': time, 'price': price, 'qty': qty, 'view': view, 'power': power, 'fact': fact}
-
             data = {}
-            for i in fid.keys():
-                result = self.dynamicCall(self.func.GetCommRealData, sCode, str(i))
-                data[i] = result.strip()
-
-            # Lupin 에서 가중치 계산
-            # view = 'neg'
-            # if data[10] == data[27]:
-            #     view = 'pos'
+            for key in self.fid.deal.keys():
+                result = self.dynamicCall(self.func.GetCommRealData, sCode, key)
+                data[key] = result.strip()
 
         elif sRealType == '주식호가잔량':
-            # data = {'time': time, 'price': price, 'qty': qty, 'view': view, 'power': power, 'fact': fact}
+            data = {}
+            for key in self.fid.bid.keys():
+                result = self.dynamicCall(self.func.GetCommRealData, sCode, key)
+                data[key] = int(result.strip())
 
-
-            total_hope_sell = self.dynamicCall(self.func.GetCommRealData, sCode, "121")  # 매도호가총잔량
-            total_hope_buy = self.dynamicCall(self.func.GetCommRealData, sCode, "125")  # 매수호가총잔량
-
-            fact = "hope"  # real 체결, hope 호가
-            s20 = self.dynamicCall(self.func.GetCommRealData, sCode, "21")  # 호가시간
-
-            for i in range(81, 91):
-                s15 = self.dynamicCall(self.func.GetCommRealData, sCode, str(i))  # 매도호가직전대비 1~10
-                if s15 == 0:
-                    pass
-                else:
-                    s10 = self.dynamicCall(self.func.GetCommRealData, sCode, str(i-40))  # 매도호가 1~10
-                    power = abs(11-(i-80))  # 가중치 매도호가1 = 10, 매도호가10 = 1
-                    if s15 > 0:  # 매도호가잔량 증가
-                        view = 'pos'
-                    elif s15 < 0:  # 매도호가잔량 감소
-                        view = 'neg'
-
-            for i in range(91, 101):
-                s15 = self.dynamicCall(self.func.GetCommRealData, sCode, str(i))  # 매수호가직전대비 1~10
-                if s15 == 0:
-                    pass
-                else:
-                    s10 = self.dynamicCall(self.func.GetCommRealData, sCode, str(i-40))  # 매수호가 1~10
-                    power = abs(11-(i-90))  # 가중치 매수호가1 = 10, 매수호가10 = 1
-                    if s15 > 0:  # 매수호가잔량 증가
-                        view = 'neg'
-                    elif s15 < 0:  # 매수호가잔량 감소
-                        view = 'pos'
-
-
-        data = {'time': s20, 'price': s10, 'qty': s15, 'view': view, 'power': power, 'fact': fact}
         self.lupin.update(sCode, data)
 
     def order_signal(self, order_type, stock_code, quantity, price, bid_type, original_order=" "):
