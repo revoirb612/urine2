@@ -13,8 +13,6 @@ class Machine(QAxWidget):
         self.func = Functions()
         self.fid = Fid()
 
-        self.count = True
-
         # 빈 데이터프레임 생성
         self.today = date.today().strftime('%Y%m%d')
         self.df_deal = pd.DataFrame(columns=self.fid.deal)
@@ -33,7 +31,9 @@ class Machine(QAxWidget):
 
         self.login()
         self.set_real_signals()
-        self.trade()
+
+        # self.count = True
+        # self.trade()
 
     def connect_events(self):
         self.OnEventConnect.connect(self.login_slot)
@@ -83,16 +83,17 @@ class Machine(QAxWidget):
             self.dynamicCall(self.func.CommRqData, tr, "opw00001", "0", self.tr_screen)
             self.tr_loop.exec_()
 
-    def tr_slot(self, sScrNo, sRqName, sTrCode, sRecordName, sPrevNext):
-        if sRqName == "예수금상세현황요청":
-            result_1 = self.dynamicCall(self.func.GetCommData, sTrCode, sRqName, 0, "예수금")
-            result_2 = self.dynamicCall(self.func.GetCommData, sTrCode, sRqName, 0, "출금가능금액")
-            print("예수금: %s원" % int(result_1))
-            print("출금가능: %s원" % int(result_2))
+    def tr_slot(self, scr_no, rq_name, tr_code, record_name, prev_next):
+        if rq_name == '예수금상세현황요청':
+            result1 = int(self.dynamicCall(self.func.GetCommData, tr_code, rq_name, 0, "예수금"))
+            result2 = int(self.dynamicCall(self.func.GetCommData, tr_code, rq_name, 0, "출금가능금액"))
+            print("예수금 {}원".format(result1))
+            print("출금가능 {}원".format(result2))
             self.tr_loop.exit()
 
     def real_signal(self, code_list=" ", fid_list="215", opt_type="0"):
-        self.dynamicCall(self.func.SetRealReg, self.real_screen, code_list, fid_list, opt_type)
+        result = self.dynamicCall(self.func.SetRealReg, self.real_screen, code_list, fid_list, opt_type)
+        print('실시간 데이터 요청 성공 {}'.format(code_list) if result == 0 else '실시간 데이터 요청 실패')
 
     def real_slot(self, code, real_type, real_data):  # code: 종목코드, real_type: 실시간 데이터 종류, real_data: 실시간 데이터 전문
         if real_type == '장시작시간':
@@ -143,23 +144,23 @@ class Machine(QAxWidget):
         print(nItemCnt, sFIdList)
         data = {}
         if sGubun == '0':  # 체결구분 접수와 체결시 '0'값, 국내주식 잔고전달은 '1'값, 파생잔고 전달은 '4'
-            print("[접수/체결]", end="\t")
+            print('[접수/체결]', end="\t")
             for nFid in self.fid.che:
                 data[nFid] = self.dynamicCall(self.func.GetChejanData, nFid).strip()
             print(data)
 
         elif sGubun == '1':
-            print("[국내주식 잔고전달]", end="\t")
+            print('[국내주식 잔고전달]', end="\t")
             pass
 
     def get_login_info(self):
-        info_list = ["ACCLIST", "USER_ID", "USER_NAME", "GetServerGubun"]
+        info_list = ['ACCLIST', 'USER_ID', 'USER_NAME']
         for info in info_list:
             result = self.dynamicCall(self.func.GetLoginInfo, info)
-            if info == "ACCLIST":
-                result = result.split(";")[0]
+            if info == 'ACCLIST':
+                result = result.split(';')[0]
                 self.account = result
-            print("%s: %s" % (info, result))
+            print('{} {}'.format(info, result))
 
     def get_code_list(self, market="10"):
         result = self.dynamicCall("GetCodeListByMarket(QString)", market)
