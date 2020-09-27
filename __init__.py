@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import *
-from machine import Machine
+from main import Machine
 import sys
 sys.path.append('/')
 

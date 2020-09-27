@@ -8,3 +8,5 @@ class Functions:
     SetRealReg = "SetRealReg(QString, QString, QString, QString)"
     GetCommDataEx = "GetCommDataEx(QString, QString)"
     SendOrder = "SendOrder(QString, QString, QString, int, QString, int, int, QString, QString)"
+    GetChejanData = "GetChejanData(QString)"
+    DisconnectRealData = "DisconnectRealData(QString)"
