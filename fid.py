@@ -1,4 +1,4 @@
-class Fid:
+class FID:
     float_type = ['12', '30', '31', '228', '129', '139']
     date_type = ['20', '21']
 

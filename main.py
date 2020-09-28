@@ -1,7 +1,7 @@
 from PyQt5.QAxContainer import *  # QAxWidget
 from PyQt5.QtCore import *  # QEventLoop
-from functions import Functions
-from fid import Fid
+from api import *
+from fid import *
 import pandas as pd
 from datetime import date
 
@@ -10,13 +10,11 @@ class Machine(QAxWidget):
     def __init__(self):
         super().__init__()
         self.setControl("KHOPENAPI.KHOpenAPICtrl.1")
-        self.func = Functions()
-        self.fid = Fid()
 
         # 빈 데이터프레임 생성
         self.today = date.today().strftime('%Y%m%d')
-        self.df_deal = pd.DataFrame(columns=self.fid.deal)
-        self.df_bid = pd.DataFrame(columns=self.fid.bid)
+        self.df_deal = pd.DataFrame(columns=FID.deal)
+        self.df_bid = pd.DataFrame(columns=FID.bid)
 
         self.login_loop = QEventLoop()
         self.tr_loop = QEventLoop()
@@ -49,8 +47,8 @@ class Machine(QAxWidget):
     def set_real_signals(self):
         code = "065650"  # 메디프론
         self.real_signal()  # 초기화 및 장운영구분
-        self.real_signal(code, ";".join(self.fid.deal), "1")
-        self.real_signal(code, ";".join(self.fid.bid), "1")
+        self.real_signal(code, ";".join(FID.deal), "1")
+        self.real_signal(code, ";".join(FID.bid), "1")
 
     def trade(self):
         if self.count:
@@ -64,7 +62,7 @@ class Machine(QAxWidget):
             self.count = False
 
     def login_signal(self):
-        self.dynamicCall(self.func.CommConnect)
+        self.dynamicCall(API.CommConnect)
         self.login_loop.exec_()
 
     def login_slot(self, err_code):
@@ -76,30 +74,30 @@ class Machine(QAxWidget):
 
     def tr_signal(self, tr, stock_code=None):
         if tr == "예수금상세현황요청":
-            self.dynamicCall(self.func.SetInputValue, "계좌번호", self.account)
-            self.dynamicCall(self.func.SetInputValue, "비밀번호", "")
-            self.dynamicCall(self.func.SetInputValue, "비밀번호입력매체구분", "00")
-            self.dynamicCall(self.func.SetInputValue, "조회구분", "2")
-            self.dynamicCall(self.func.CommRqData, tr, "opw00001", "0", self.tr_screen)
+            self.dynamicCall(API.SetInputValue, "계좌번호", self.account)
+            self.dynamicCall(API.SetInputValue, "비밀번호", "")
+            self.dynamicCall(API.SetInputValue, "비밀번호입력매체구분", "00")
+            self.dynamicCall(API.SetInputValue, "조회구분", "2")
+            self.dynamicCall(API.CommRqData, tr, "opw00001", "0", self.tr_screen)
             self.tr_loop.exec_()
 
     def tr_slot(self, scr_no, rq_name, tr_code, record_name, prev_next):
         if rq_name == '예수금상세현황요청':
-            result1 = int(self.dynamicCall(self.func.GetCommData, tr_code, rq_name, 0, "예수금"))
-            result2 = int(self.dynamicCall(self.func.GetCommData, tr_code, rq_name, 0, "출금가능금액"))
+            result1 = int(self.dynamicCall(API.GetCommData, tr_code, rq_name, 0, "예수금"))
+            result2 = int(self.dynamicCall(API.GetCommData, tr_code, rq_name, 0, "출금가능금액"))
             print("예수금 {}원".format(result1))
             print("출금가능 {}원".format(result2))
             self.tr_loop.exit()
 
     def real_signal(self, code_list=" ", fid_list="215", opt_type="0"):
-        result = self.dynamicCall(self.func.SetRealReg, self.real_screen, code_list, fid_list, opt_type)
+        result = self.dynamicCall(API.SetRealReg, self.real_screen, code_list, fid_list, opt_type)
         print('실시간 데이터 요청 성공 {}'.format(code_list) if result == 0 else '실시간 데이터 요청 실패')
 
     def real_slot(self, code, real_type, real_data):  # code: 종목코드, real_type: 실시간 데이터 종류, real_data: 실시간 데이터 전문
         if real_type == '장시작시간':
-            result = self.dynamicCall(self.func.GetCommRealData, code, '215').strip()
+            result = self.dynamicCall(API.GetCommRealData, code, '215').strip()
             if result == "2":
-                self.dynamicCall(self.func.DisconnectRealData, self.real_screen)
+                self.dynamicCall(API.DisconnectRealData, self.real_screen)
                 self.df_deal.to_csv('data/deal.csv', index=False)
                 self.df_bid.to_csv('data/bid.csv', index=False)
                 print('[매매종료] 결과를 파일로 저장했습니다.')
@@ -116,11 +114,11 @@ class Machine(QAxWidget):
 
     def to_df(self, code):
         data = {}
-        for fid in self.fid.bid:
-            result = self.dynamicCall(self.func.GetCommRealData, code, fid).strip()
-            if fid in self.fid.float_type:
+        for fid in FID.bid:
+            result = self.dynamicCall(API.GetCommRealData, code, fid).strip()
+            if fid in FID.float_type:
                 data[fid] = float(result)
-            elif fid in self.fid.date_type:
+            elif fid in FID.date_type:
                 data[fid] = pd.to_datetime(self.today + result)
             else:
                 data[fid] = int(result)
@@ -136,7 +134,7 @@ class Machine(QAxWidget):
         nPrice = price  # 주문가격, int
         sHogaGb = bid_type  # 거래구분, bid, 00: 지정가, 03: 시장가, 81: 장후시간외종가
         sOrgOrderNo = original_order  # 원주문번호, 신규주문에는 공백, 정정(취소) 주문할 원주문번호를 입력합니다.
-        result = self.dynamicCall(self.func.SendOrder,
+        result = self.dynamicCall(API.SendOrder,
                                   [sRQName, sScreenNo, sAccNo, nOrderType, sCode, nQty, nPrice, sHogaGb, sOrgOrderNo])
         print("주문 성공" if result == 0 else "주문실패")
 
@@ -145,8 +143,8 @@ class Machine(QAxWidget):
         data = {}
         if sGubun == '0':  # 체결구분 접수와 체결시 '0'값, 국내주식 잔고전달은 '1'값, 파생잔고 전달은 '4'
             print('[접수/체결]', end="\t")
-            for nFid in self.fid.che:
-                data[nFid] = self.dynamicCall(self.func.GetChejanData, nFid).strip()
+            for nFid in FID.che:
+                data[nFid] = self.dynamicCall(API.GetChejanData, nFid).strip()
             print(data)
 
         elif sGubun == '1':
@@ -156,7 +154,7 @@ class Machine(QAxWidget):
     def get_login_info(self):
         info_list = ['ACCLIST', 'USER_ID', 'USER_NAME']
         for info in info_list:
-            result = self.dynamicCall(self.func.GetLoginInfo, info)
+            result = self.dynamicCall(API.GetLoginInfo, info)
             if info == 'ACCLIST':
                 result = result.split(';')[0]
                 self.account = result
